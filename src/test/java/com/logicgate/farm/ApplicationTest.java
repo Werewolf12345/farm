@@ -6,7 +6,6 @@ import com.logicgate.farm.domain.Color;
 import com.logicgate.farm.repository.BarnRepository;
 import com.logicgate.farm.service.AnimalService;
 import com.logicgate.farm.util.FarmUtils;
-
 import org.junit.After;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -22,11 +21,7 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.greaterThan;
-import static org.hamcrest.Matchers.greaterThanOrEqualTo;
-import static org.hamcrest.Matchers.is;
-import static org.hamcrest.Matchers.lessThanOrEqualTo;
-import static org.junit.Assert.assertFalse;
+import static org.hamcrest.Matchers.*;
 import static org.junit.Assert.assertTrue;
 
 @SpringBootTest
@@ -74,7 +69,7 @@ public class ApplicationTest {
 
   @Test
   public void isBarnsBalancedTest() {
-    animalService.addToFarm(IntStream.range(0, 60)
+    animalService.addToFarm(IntStream.range(0, 61)
       .mapToObj(value -> new Animal(FarmUtils.animalName(value), Color.BLACK))
       .collect(Collectors.toList()));
 
@@ -82,7 +77,7 @@ public class ApplicationTest {
 
     animalService.addToFarm(new Animal("Dolly", Color.BLACK));
 
-    assertFalse("Should be false", animalService.isBarnsBalanced(Color.BLACK));
+    assertTrue("Should be true", animalService.isBarnsBalanced(Color.BLACK));
   }
 
   private void checkAnimals(int expected) {

@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
+import java.util.Map.Entry;
 import java.util.stream.Collectors;
 
 @Service
@@ -60,7 +61,7 @@ public class AnimalServiceImpl implements AnimalService {
       Map<Barn, List<Animal>> barnAnimalMap = animalResult.stream()
         .collect(Collectors.groupingBy(Animal::getBarn));
 
-      Optional<Map.Entry<Barn, List<Animal>>> barnWithMaxSpace = barnAnimalMap.entrySet().stream()
+      Optional<Entry<Barn, List<Animal>>> barnWithMaxSpace = barnAnimalMap.entrySet().stream()
         .filter(e -> e.getValue().size() < FarmUtils.barnCapacity())
         .min(Comparator.comparingInt(e -> e.getValue().size()));
 
@@ -71,10 +72,9 @@ public class AnimalServiceImpl implements AnimalService {
       animal.setBarn(barn);
       animalRepository.saveAndFlush(animal);
 
-      if (!isBarnsBalanced(animal.getFavoriteColor())) {
-        balanceBarns();
+      while (!isBarnsBalanced(animal.getFavoriteColor())) {
+        balanceBarns(animal.getFavoriteColor());
       }
-
     }
 
     return animal;
@@ -99,7 +99,6 @@ public class AnimalServiceImpl implements AnimalService {
   public boolean isBarnsBalanced(Color color) {
 
     final List<Animal> animalList = animalRepository.findAllByFavoriteColor(color);
-
     final List<Barn> barns = barnRepository.findAllByColor(color);
 
     int minCapacity = barns.stream()
@@ -122,7 +121,21 @@ public class AnimalServiceImpl implements AnimalService {
       && (Collections.max(unusedCapacity) - Collections.min(unusedCapacity)) <= 1;
   }
 
-  public void balanceBarns() {
+  public void balanceBarns(Color color) {
 
+    final List<Animal> animalList = animalRepository.findAllByFavoriteColor(color);
+    final List<Barn> barns = barnRepository.findAllByColor(color);
+
+    Map<Barn, Long> counts =
+      animalList.stream().collect(Collectors.groupingBy(Animal::getBarn, Collectors.counting()));
+
+    Barn barnWithMinValue = Collections.min(counts.entrySet(), Entry.comparingByValue()).getKey();
+    Barn barnWithMaxValue = Collections.max(counts.entrySet(), Entry.comparingByValue()).getKey();
+
+    Animal animal = animalRepository.findFirstByBarn(barnWithMaxValue);
+
+    animal.setBarn(barnWithMinValue);
+
+    animalRepository.flush();
   }
 }

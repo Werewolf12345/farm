@@ -15,6 +15,8 @@ public interface AnimalRepository extends JpaRepository<Animal, Long> {
 
   List<Animal> findAllByBarn(Barn barn);
 
+  Animal findFirstByBarn(Barn barn);
+
   List<Animal> findAllByFavoriteColor(Color color);
 
 }
