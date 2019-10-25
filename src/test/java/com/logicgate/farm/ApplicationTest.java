@@ -22,7 +22,6 @@ import java.util.stream.IntStream;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
-import static org.junit.Assert.assertTrue;
 
 @SpringBootTest
 @RunWith(SpringRunner.class)
@@ -65,19 +64,6 @@ public class ApplicationTest {
     animalService.removeFromFarm(animalsToRemove);
 
     checkAnimals(animals.size() - animalsToRemove.size());
-  }
-
-  @Test
-  public void isBarnsBalancedTest() {
-    animalService.addToFarm(IntStream.range(0, 61)
-      .mapToObj(value -> new Animal(FarmUtils.animalName(value), Color.BLACK))
-      .collect(Collectors.toList()));
-
-    assertTrue("Should be true", animalService.isBarnsBalanced(Color.BLACK));
-
-    animalService.addToFarm(new Animal("Dolly", Color.BLACK));
-
-    assertTrue("Should be true", animalService.isBarnsBalanced(Color.BLACK));
   }
 
   private void checkAnimals(int expected) {

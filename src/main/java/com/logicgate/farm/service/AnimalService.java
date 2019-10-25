@@ -1,7 +1,6 @@
 package com.logicgate.farm.service;
 
 import com.logicgate.farm.domain.Animal;
-import com.logicgate.farm.domain.Color;
 
 import java.util.List;
 
@@ -125,7 +124,5 @@ public interface AnimalService {
    * @param animals the sad friends who are moving away
    */
   void removeFromFarm(List<Animal> animals);
-
-  boolean isBarnsBalanced(Color color);
 
 }

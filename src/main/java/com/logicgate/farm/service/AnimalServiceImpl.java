@@ -72,8 +72,8 @@ public class AnimalServiceImpl implements AnimalService {
       animal.setBarn(barn);
       animalRepository.saveAndFlush(animal);
 
-      while (!isBarnsBalanced(animal.getFavoriteColor())) {
-        balanceBarns(animal.getFavoriteColor());
+      while (!isBarnBalanced(animal.getFavoriteColor())) {
+        balanceBarn(animal.getFavoriteColor());
       }
     }
 
@@ -87,7 +87,23 @@ public class AnimalServiceImpl implements AnimalService {
 
   @Override
   public void removeFromFarm(Animal animal) {
+
     // TODO: implementation of this method
+
+    Barn barn = animal.getBarn();
+    Color color = animal.getFavoriteColor();
+
+    animalRepository.delete(animal);
+    animalRepository.flush();
+
+    if (animalRepository.findAllByBarn(barn).isEmpty()) {
+      barnRepository.delete(barn);
+      barnRepository.flush();
+    }
+
+    while (!isBarnBalanced(color)) {
+      balanceBarn(color);
+    }
   }
 
   @Override
@@ -95,21 +111,24 @@ public class AnimalServiceImpl implements AnimalService {
     animals.forEach(animal -> removeFromFarm(animalRepository.getOne(animal.getId())));
   }
 
-  @Override
-  public boolean isBarnsBalanced(Color color) {
+  private boolean isBarnBalanced(Color color) {
 
     final List<Animal> animalList = animalRepository.findAllByFavoriteColor(color);
-    final List<Barn> barns = barnRepository.findAllByColor(color);
+    final List<Barn> barnList = barnRepository.findAllByColor(color);
 
-    int minCapacity = barns.stream()
+    if (animalList.isEmpty() || barnList.isEmpty()) {
+      return true;
+    }
+
+    int minCapacity = barnList.stream()
       .mapToInt(Barn::getCapacity)
       .min()
       .orElse(FarmUtils.barnCapacity());
 
-    Map<Barn, Long> counts =
+    Map<Barn, Long> barnNumAnimalsMap =
       animalList.stream().collect(Collectors.groupingBy(Animal::getBarn, Collectors.counting()));
 
-    List<Integer> unusedCapacity = counts.entrySet().stream()
+    List<Integer> unusedCapacity = barnNumAnimalsMap.entrySet().stream()
       .map(e -> (int) (e.getKey().getCapacity() - e.getValue()))
       .collect(Collectors.toList());
 
@@ -121,20 +140,58 @@ public class AnimalServiceImpl implements AnimalService {
       && (Collections.max(unusedCapacity) - Collections.min(unusedCapacity)) <= 1;
   }
 
-  public void balanceBarns(Color color) {
+  private void balanceBarn(Color color) {
 
     final List<Animal> animalList = animalRepository.findAllByFavoriteColor(color);
-    final List<Barn> barns = barnRepository.findAllByColor(color);
+    final List<Barn> barnList = barnRepository.findAllByColor(color);
 
-    Map<Barn, Long> counts =
-      animalList.stream().collect(Collectors.groupingBy(Animal::getBarn, Collectors.counting()));
+    Map<Barn, Long> barnNumAnimalsMap = animalList.stream()
+      .collect(Collectors.groupingBy(Animal::getBarn, Collectors.counting()));
 
-    Barn barnWithMinValue = Collections.min(counts.entrySet(), Entry.comparingByValue()).getKey();
-    Barn barnWithMaxValue = Collections.max(counts.entrySet(), Entry.comparingByValue()).getKey();
+    List<Integer> unusedCapacity = barnNumAnimalsMap.entrySet().stream()
+      .map(e -> (int) (e.getKey().getCapacity() - e.getValue()))
+      .collect(Collectors.toList());
 
-    Animal animal = animalRepository.findFirstByBarn(barnWithMaxValue);
+    int totalUnusedCapacity = unusedCapacity.stream()
+      .mapToInt(i -> i)
+      .sum();
 
-    animal.setBarn(barnWithMinValue);
+    int minCapacity = barnList.stream()
+      .mapToInt(Barn::getCapacity)
+      .min()
+      .orElse(FarmUtils.barnCapacity());
+
+    if (totalUnusedCapacity >= minCapacity) {
+      Barn barnToDemolish = barnList.stream()
+        .min(Comparator.comparingInt(Barn::getCapacity))
+        .get();
+
+      Queue<Animal> animalsToMove = new LinkedList<>(animalRepository.findAllByBarn(barnToDemolish));
+      barnNumAnimalsMap.remove(barnToDemolish);
+
+      barnNumAnimalsMap.forEach((barn, numAnimals) -> {
+        for (int i = 0; i < barn.getCapacity() - numAnimals; i++) {
+          Animal animal = animalsToMove.poll();
+          if(animal != null) {
+            animal.setBarn(barn);
+          } else {
+            break;
+          }
+        }
+      });
+
+      barnRepository.delete(barnToDemolish);
+      barnRepository.flush();
+      animalRepository.flush();
+    }
+
+    Barn barnWithMinNumber = Collections.min(barnNumAnimalsMap.entrySet(), Entry.comparingByValue()).getKey();
+    barnNumAnimalsMap.remove(barnWithMinNumber);
+    Barn barnWithMaxNumber = Collections.max(barnNumAnimalsMap.entrySet(), Entry.comparingByValue()).getKey();
+
+    Animal animal = animalRepository.findFirstByBarn(barnWithMaxNumber);
+
+    animal.setBarn(barnWithMinNumber);
 
     animalRepository.flush();
   }
